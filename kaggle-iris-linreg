@@ -1,0 +1,118 @@
+----------------- first linear regression project on kaggle ------------------
+
+#iris-linearreg-train.csv => used the Iris-versicolor based 50 rows from the original public dataset 'Iris.csv', 
+#taken the first 2 columns w/ the header info - SepalLenghtCm and SepalWidthCm 
+#and ran a simple linear regression on it by computing the cost and gradient descent (based on notes from ML course).
+#ref => https://medium.com/analytics-vidhya/python-implementation-of-andrew-ngs-machine-learning-course-part-1-6b8dd1c73d80
+
+
+# This Python 3 environment comes with many helpful analytics libraries installed
+# It is defined by the kaggle/python docker image: https://github.com/kaggle/docker-python
+# For example, here's several helpful packages to load in 
+
+import numpy as np # linear algebra
+import pandas as pd # data processing, CSV file I/O (e.g. pd.read_csv)
+import matplotlib.pyplot as plt
+
+from sklearn.linear_model import LinearRegression
+from sklearn.metrics import mean_squared_error
+
+# Input data files are available in the "../input/" directory.
+# For example, running this (by clicking run or pressing Shift+Enter) will list the files in the input directory
+
+import os
+print(os.listdir("../input"))
+
+# Any results you write to the current directory are saved as output.
+data = pd.read_csv('../input/iris-linearreg-train.csv')
+
+#data.describe()
+#data.head()
+#data.tail()
+#data.corr()
+plt.scatter(data.SepalLengthCm, data.SepalWidthCm)
+plt.xlabel("SepalLength")
+plt.ylabel("SepalWidth")
+plt.show()
+
+linear_reg = LinearRegression()
+X = data.SepalLengthCm.values.reshape(-1,1)
+y = data.SepalWidthCm.values.reshape(-1,1)
+m,n=data.shape #get number of training examples & features
+#print('m:',m)
+#print('n:',n)
+
+iterations = 1500
+alpha = 0.01
+J = 0;
+
+#Xnew=np.insert(X,0,1.0,axis=1) #adding the intercept term x0
+Xnew=np.hstack((np.ones((m,1)),X)) #adding the intercept term x0
+X=Xnew
+print('X:',X.shape)
+print('y:',y.shape)
+
+#random initialization of theta
+theta = np.zeros([2,1])
+print('theta-initial:',theta)
+
+#function to Compute the cost (using logic from ML programming assignment ex1)
+def computeCost(X,y,theta):
+    hofx=theta.T*X #size is 50 x 2 matrix
+    print('hofx:',hofx.shape)
+    error=hofx-y
+    print('error:',error.shape)
+    error_sqr = np.power(error,2)
+    #print('error_sqr:',error_sqr)
+    sumoferrsqr = np.sum(error_sqr)    
+    print('sumoferrsqr:',sumoferrsqr)
+    J = (1/(2*m)) * sumoferrsqr
+    return J
+
+J = computeCost(X, y,theta)
+print('J-before:',J)
+
+#function to Compute the gradient descent (using logic from ML programming assignment ex1)
+#Finding the optimal parameter theta using Gradient Descent
+def gradientDescent(X, y, theta, alpha, iterations):
+    for _ in range(iterations):                
+        hofx = np.dot(X, theta)
+        error = hofx - y
+        error_X_mult = np.dot(X.T, error)        
+        theta_change = (alpha/m) * error_X_mult
+        theta = theta - theta_change                  
+    return theta
+
+theta = gradientDescent(X, y, theta, alpha, iterations)
+print('theta:',theta)
+
+#We now have the optimized value of theta. Use this value in the above cost function.
+#J-after should be better and less than J-after cost value
+J = computeCost(X, y,theta)
+print('J-after:',J)
+
+#finally, Plot and show the best fit line
+plt.scatter(X[:,1], y)
+plt.xlabel("SepalLength")
+plt.ylabel("SepalWidth")
+plt.plot(X[:,1], np.dot(X, theta))
+plt.show()
+
+o/p
+
+['iris-linearreg-train.csv']
+
+X: (50, 2)
+y: (50, 1)
+theta-initial: [[0.] [0.]]
+hofx: (50, 2)
+error: (50, 2)
+sumoferrsqr: 776.94
+J-before: 7.769400000000001
+theta: [[0.15680868] [0.43936535]]
+hofx: (50, 2)
+error: (50, 2)
+sumoferrsqr: 351.25184530781667
+J-after: 3.5125184530781666
+
+----------------- end of first linear regression project on kaggle ------------------
