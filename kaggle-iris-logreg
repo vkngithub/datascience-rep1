@@ -6,6 +6,9 @@
 # It is defined by the kaggle/python docker image: https://github.com/kaggle/docker-python
 # For example, here's several helpful packages to load in 
 
+# Import Dependencies
+%matplotlib inline
+
 import numpy as np # linear algebra
 import pandas as pd # data processing, CSV file I/O (e.g. pd.read_csv)
 import matplotlib.pyplot as plt
@@ -16,6 +19,7 @@ from sklearn.svm import SVC
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.metrics import accuracy_score
 from sklearn.model_selection import train_test_split
+from sklearn.metrics import confusion_matrix
 
 # Input data files are available in the "../input/" directory.
 # For example, running this (by clicking run or pressing Shift+Enter) will list the files in the input directory
@@ -41,35 +45,81 @@ data.head()
 
 #split data into train and test
 X=data.values[:,0:4]
-y=data.values[:,4].astype(np.int)
-#Y=Y.astype(‘int’) 
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=1)
+y=data.values[:,4].astype(np.int)#using astype() method to convert array y's datatype, else we get the "ValueError: Unknown label type"
+print("data X:", X.shape, "data y:", y.shape)
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)#train/test split % is usually around 80/20 or 70/30.
+#using random_state=42 everytime, you will get the same output the first time you make the split
+#X_train
+#X_test
+#y_train
+#y_test
+print("Xtrain:", X_train.shape, "ytrain:", y_train.shape)
+print("Xtest:", X_test.shape, "ytest:", y_test.shape)
+print('-' * 50)
+
+#function used by all models below
+def fitmodel(modelobj,modeltype):
+    #Fit the classifier to the data
+    modelobj.fit(X_train,y_train)
+    y_predictions=modelobj.predict(X_test)
+    # how did our model perform?
+    count_misclassified = (y_test != y_predictions).sum()
+    print('Misclassified samples: {}'.format(count_misclassified))
+    #check accuracy of our model on the test data
+    print(modeltype,":",str(round(accuracy_score(y_test, y_predictions),2)))
+    #Confusion Matrix is a performance measurement for machine learning classification 
+    #problem where output can be two or more classes. It is a table with different combinations of predicted and actual values.
+    conf_matrix = confusion_matrix(y_test, y_predictions)
+    print('Confusion Matrix:')
+    print(conf_matrix)
+
+    ##plot the model
+    #plt.scatter(y_test, y_predictions)
+    #plt.xlabel("True Values1")
+    #plt.ylabel("Predictions1")
+    print('-' * 50)
+
+#try diff models below for accuracy
 
 #K nearest neighbor model
 #Create KNN classifier
 knn = KNeighborsClassifier(n_neighbors=3)
-#Fit the classifier to the data
-knn.fit(X_train,y_train)
-predictions=knn.predict(X_test)
-#check accuracy of our model on the test data
-print("KNeighborsClassifier: " + str(accuracy_score(y_test, predictions)))
+fitmodel(knn,"KNeighborsClassifier")
 
 #logistic regression model
-logreg= LogisticRegression()
-logreg.fit(X_train,y_train)
-predictions=logreg.predict(X_test)
-#evaluate accuracy
-print("Logistic Regression: " + str(accuracy_score(y_test, predictions)))
+logreg= LogisticRegression(solver='lbfgs',multi_class='multinomial',max_iter=1500)
+#multiclass='multinomial' is supported by ‘newton-cg’, ‘lbfgs’, ‘sag’, ‘saga’
+fitmodel(logreg,"Logistic Regression")
 
 #SVM model
-svm= SVC()
-svm.fit(X_train,y_train)
-predictions=svm.predict(X_test)
-#evaluate accuracy
-print("SVC: " + str(accuracy_score(y_test, predictions)))
+svm= SVC(gamma='scale')
+fitmodel(svm,"SVC")
 
 o/p
 
-KNeighborsClassifier: 0.9
-Logistic Regression: 0.8666666666666667
-SVC: 0.8666666666666667
+['Iris.csv', 'database.sqlite']
+data X: (150, 4) data y: (150,)
+Xtrain: (120, 4) ytrain: (120,)
+Xtest: (30, 4) ytest: (30,)
+--------------------------------------------------
+Misclassified samples: 3
+KNeighborsClassifier : 0.9
+Confusion Matrix:
+[[10  0  0]
+ [ 0 11  0]
+ [ 0  3  6]]
+--------------------------------------------------
+Misclassified samples: 5
+Logistic Regression : 0.83
+Confusion Matrix:
+[[10  0  0]
+ [ 0 11  0]
+ [ 0  5  4]]
+--------------------------------------------------
+Misclassified samples: 9
+SVC : 0.7
+Confusion Matrix:
+[[10  0  0]
+ [ 0 11  0]
+ [ 0  9  0]]
+--------------------------------------------------
