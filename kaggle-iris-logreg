@@ -1,0 +1,75 @@
+#Iris.csv => used the original public dataset and ran a simple logistic regression on it using gradient descent.
+#Because there are 3 classes (Iris-setosa,Iris-versicolor,Iris-virginica), we can use one-vs-all multiclass classification 
+#with logistic regression or other algorithms.
+
+# This Python 3 environment comes with many helpful analytics libraries installed
+# It is defined by the kaggle/python docker image: https://github.com/kaggle/docker-python
+# For example, here's several helpful packages to load in 
+
+import numpy as np # linear algebra
+import pandas as pd # data processing, CSV file I/O (e.g. pd.read_csv)
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+from sklearn.linear_model import LogisticRegression
+from sklearn.svm import SVC
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.metrics import accuracy_score
+from sklearn.model_selection import train_test_split
+
+# Input data files are available in the "../input/" directory.
+# For example, running this (by clicking run or pressing Shift+Enter) will list the files in the input directory
+
+import os
+print(os.listdir("../input"))
+
+# Any results you write to the current directory are saved as output.
+data = pd.read_csv('../input/Iris.csv')
+data.head()
+#data.describe()
+#data.head()
+#data.tail()
+#data.corr()
+#plt.scatter(data.SepalLengthCm, data.SepalWidthCm)
+#plt.xlabel("SepalLength")
+#plt.ylabel("SepalWidth")
+#plt.show()
+#data.shape
+
+#sns.boxplot(data=data,width=0.5,fliersize=5)
+#sns.set(rc={'figure.figsize':(2,5)})
+
+#split data into train and test
+X=data.values[:,0:4]
+y=data.values[:,4].astype(np.int)
+#Y=Y.astype(‘int’) 
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=1)
+
+#K nearest neighbor model
+#Create KNN classifier
+knn = KNeighborsClassifier(n_neighbors=3)
+#Fit the classifier to the data
+knn.fit(X_train,y_train)
+predictions=knn.predict(X_test)
+#check accuracy of our model on the test data
+print("KNeighborsClassifier: " + str(accuracy_score(y_test, predictions)))
+
+#logistic regression model
+logreg= LogisticRegression()
+logreg.fit(X_train,y_train)
+predictions=logreg.predict(X_test)
+#evaluate accuracy
+print("Logistic Regression: " + str(accuracy_score(y_test, predictions)))
+
+#SVM model
+svm= SVC()
+svm.fit(X_train,y_train)
+predictions=svm.predict(X_test)
+#evaluate accuracy
+print("SVC: " + str(accuracy_score(y_test, predictions)))
+
+o/p
+
+KNeighborsClassifier: 0.9
+Logistic Regression: 0.8666666666666667
+SVC: 0.8666666666666667
