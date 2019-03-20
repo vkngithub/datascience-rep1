@@ -1,6 +1,6 @@
 #Iris.csv => used the original public dataset and ran a simple logistic regression on it using gradient descent.
 #Because there are 3 classes (Iris-setosa,Iris-versicolor,Iris-virginica), we can use one-vs-all multiclass classification 
-#with logistic regression or other algorithms.
+#by testing model accuracy in several algorithms.
 
 # This Python 3 environment comes with many helpful analytics libraries installed
 # It is defined by the kaggle/python docker image: https://github.com/kaggle/docker-python
@@ -15,12 +15,13 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import missingno
 
+from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LogisticRegression
 from sklearn.svm import SVC
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.metrics import accuracy_score
-from sklearn.model_selection import train_test_split
 from sklearn.metrics import confusion_matrix
+from sklearn.metrics import classification_report
 from sklearn.naive_bayes import GaussianNB 
 from sklearn.naive_bayes import MultinomialNB
 
@@ -56,7 +57,7 @@ print("data X:", X.shape, "data y:", y.shape)
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)#train/test split % is usually around 80/20 or 70/30.
 #using random_state=42 everytime, you will get the same output the first time you make the split
 #X_train
-#X_test
+#print("X_test:",X_test)
 #y_train
 #y_test
 print("Xtrain:", X_train.shape, "ytrain:", y_train.shape)
@@ -78,10 +79,12 @@ def fitmodel(modelobj,modeltype):
     
     #Confusion Matrix is a performance measurement for machine learning classification 
     #problem where output can be two or more classes. It is a table with different combinations of predicted and actual values.
+    labels = ['Setosa class0','Virginica class1','Versicolor class2']
     conf_matrix = confusion_matrix(y_test, y_predictions)
     print('Confusion Matrix:')
     print(conf_matrix)
-
+    print(classification_report(y_test, y_predictions,target_names=labels))
+    
     ##plot the model
     #plt.scatter(y_test, y_predictions)
     #plt.xlabel("True Values1")
@@ -119,38 +122,88 @@ data X: (150, 4) data y: (150,)
 Xtrain: (120, 4) ytrain: (120,)
 Xtest: (30, 4) ytest: (30,)
 --------------------------------------------------
-KNeighborsClassifier accuracy is: 90.0 %
+KNeighborsClassifier Test accuracy is: 90.0 %
 Misclassified samples: 3
 Confusion Matrix:
 [[10  0  0]
  [ 0 11  0]
  [ 0  3  6]]
+                   precision    recall  f1-score   support
+
+    Setosa class0       1.00      1.00      1.00        10
+ Virginica class1       0.79      1.00      0.88        11
+Versicolor class2       1.00      0.67      0.80         9
+
+        micro avg       0.90      0.90      0.90        30
+        macro avg       0.93      0.89      0.89        30
+     weighted avg       0.92      0.90      0.90        30
+
 --------------------------------------------------
-Logistic Regression accuracy is: 83.0 %
+Logistic Regression Test accuracy is: 83.0 %
 Misclassified samples: 5
 Confusion Matrix:
 [[10  0  0]
  [ 0 11  0]
  [ 0  5  4]]
+                   precision    recall  f1-score   support
+
+    Setosa class0       1.00      1.00      1.00        10
+ Virginica class1       0.69      1.00      0.81        11
+Versicolor class2       1.00      0.44      0.62         9
+
+        micro avg       0.83      0.83      0.83        30
+        macro avg       0.90      0.81      0.81        30
+     weighted avg       0.89      0.83      0.82        30
+
 --------------------------------------------------
-SVC accuracy is: 70.0 %
+SVC Test accuracy is: 70.0 %
 Misclassified samples: 9
 Confusion Matrix:
 [[10  0  0]
  [ 0 11  0]
  [ 0  9  0]]
+                   precision    recall  f1-score   support
+
+    Setosa class0       1.00      1.00      1.00        10
+ Virginica class1       0.55      1.00      0.71        11
+Versicolor class2       0.00      0.00      0.00         9
+
+        micro avg       0.70      0.70      0.70        30
+        macro avg       0.52      0.67      0.57        30
+     weighted avg       0.54      0.70      0.59        30
+
 --------------------------------------------------
-Gaussian Naive Bayes accuracy is: 100.0 %
+Gaussian Naive Bayes Test accuracy is: 100.0 %
 Misclassified samples: 0
 Confusion Matrix:
 [[10  0  0]
  [ 0 11  0]
  [ 0  0  9]]
+                   precision    recall  f1-score   support
+
+    Setosa class0       1.00      1.00      1.00        10
+ Virginica class1       1.00      1.00      1.00        11
+Versicolor class2       1.00      1.00      1.00         9
+
+        micro avg       1.00      1.00      1.00        30
+        macro avg       1.00      1.00      1.00        30
+     weighted avg       1.00      1.00      1.00        30
+
 --------------------------------------------------
-Multinomial Naive Bayes accuracy is: 67.0 %
+Multinomial Naive Bayes Test accuracy is: 67.0 %
 Misclassified samples: 10
 Confusion Matrix:
 [[ 9  1  0]
  [ 0 11  0]
  [ 0  9  0]]
+                   precision    recall  f1-score   support
+
+    Setosa class0       1.00      0.90      0.95        10
+ Virginica class1       0.52      1.00      0.69        11
+Versicolor class2       0.00      0.00      0.00         9
+
+        micro avg       0.67      0.67      0.67        30
+        macro avg       0.51      0.63      0.54        30
+     weighted avg       0.53      0.67      0.57        30
+
 --------------------------------------------------
