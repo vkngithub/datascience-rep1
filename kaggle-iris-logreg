@@ -70,7 +70,7 @@ def fitmodel(modelobj,modeltype):
     y_predictions=modelobj.predict(X_test)
     
     #check accuracy of our model on the test data
-    print(modeltype,"accuracy is:",str(100*round(accuracy_score(y_test, y_predictions),2)),"%")
+    print(modeltype,"Test accuracy is:",str(100*round(accuracy_score(y_test, y_predictions),2)),"%")
     
     # how did our model perform?
     count_misclassified = (y_test != y_predictions).sum()
