@@ -13,6 +13,7 @@ import numpy as np # linear algebra
 import pandas as pd # data processing, CSV file I/O (e.g. pd.read_csv)
 import matplotlib.pyplot as plt
 import seaborn as sns
+import missingno
 
 from sklearn.linear_model import LogisticRegression
 from sklearn.svm import SVC
@@ -20,6 +21,8 @@ from sklearn.neighbors import KNeighborsClassifier
 from sklearn.metrics import accuracy_score
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import confusion_matrix
+from sklearn.naive_bayes import GaussianNB 
+from sklearn.naive_bayes import MultinomialNB
 
 # Input data files are available in the "../input/" directory.
 # For example, running this (by clicking run or pressing Shift+Enter) will list the files in the input directory
@@ -29,7 +32,7 @@ print(os.listdir("../input"))
 
 # Any results you write to the current directory are saved as output.
 data = pd.read_csv('../input/Iris.csv')
-data.head()
+#data.head()
 #data.describe()
 #data.head()
 #data.tail()
@@ -39,6 +42,9 @@ data.head()
 #plt.ylabel("SepalWidth")
 #plt.show()
 #data.shape
+
+#plot of missing values
+missingno.matrix(data, figsize=(10,5))
 
 #sns.boxplot(data=data,width=0.5,fliersize=5)
 #sns.set(rc={'figure.figsize':(2,5)})
@@ -62,11 +68,14 @@ def fitmodel(modelobj,modeltype):
     #Fit the classifier to the data
     modelobj.fit(X_train,y_train)
     y_predictions=modelobj.predict(X_test)
+    
+    #check accuracy of our model on the test data
+    print(modeltype,"accuracy is:",str(100*round(accuracy_score(y_test, y_predictions),2)),"%")
+    
     # how did our model perform?
     count_misclassified = (y_test != y_predictions).sum()
     print('Misclassified samples: {}'.format(count_misclassified))
-    #check accuracy of our model on the test data
-    print(modeltype,":",str(round(accuracy_score(y_test, y_predictions),2)))
+    
     #Confusion Matrix is a performance measurement for machine learning classification 
     #problem where output can be two or more classes. It is a table with different combinations of predicted and actual values.
     conf_matrix = confusion_matrix(y_test, y_predictions)
@@ -95,6 +104,14 @@ fitmodel(logreg,"Logistic Regression")
 svm= SVC(gamma='scale')
 fitmodel(svm,"SVC")
 
+#Gaussian Naive Bayes classifier
+gnb = GaussianNB()
+fitmodel(gnb,"Gaussian Naive Bayes")
+
+#Multinomial Naive Bayes classifier
+mnb = MultinomialNB(alpha=1.0, class_prior=None, fit_prior=True)
+fitmodel(mnb,"Multinomial Naive Bayes")
+
 o/p
 
 ['Iris.csv', 'database.sqlite']
@@ -102,24 +119,38 @@ data X: (150, 4) data y: (150,)
 Xtrain: (120, 4) ytrain: (120,)
 Xtest: (30, 4) ytest: (30,)
 --------------------------------------------------
+KNeighborsClassifier accuracy is: 90.0 %
 Misclassified samples: 3
-KNeighborsClassifier : 0.9
 Confusion Matrix:
 [[10  0  0]
  [ 0 11  0]
  [ 0  3  6]]
 --------------------------------------------------
+Logistic Regression accuracy is: 83.0 %
 Misclassified samples: 5
-Logistic Regression : 0.83
 Confusion Matrix:
 [[10  0  0]
  [ 0 11  0]
  [ 0  5  4]]
 --------------------------------------------------
+SVC accuracy is: 70.0 %
 Misclassified samples: 9
-SVC : 0.7
 Confusion Matrix:
 [[10  0  0]
+ [ 0 11  0]
+ [ 0  9  0]]
+--------------------------------------------------
+Gaussian Naive Bayes accuracy is: 100.0 %
+Misclassified samples: 0
+Confusion Matrix:
+[[10  0  0]
+ [ 0 11  0]
+ [ 0  0  9]]
+--------------------------------------------------
+Multinomial Naive Bayes accuracy is: 67.0 %
+Misclassified samples: 10
+Confusion Matrix:
+[[ 9  1  0]
  [ 0 11  0]
  [ 0  9  0]]
 --------------------------------------------------
