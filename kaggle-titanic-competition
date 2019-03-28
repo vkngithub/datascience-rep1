@@ -1,0 +1,429 @@
+# This Python 3 environment comes with many helpful analytics libraries installed
+# It is defined by the kaggle/python docker image: https://github.com/kaggle/docker-python
+# For example, here's several helpful packages to load in 
+
+%matplotlib inline
+
+import numpy as np # linear algebra
+import pandas as pd # data processing, CSV file I/O (e.g. pd.read_csv)
+import matplotlib.pyplot as plt
+import missingno
+import seaborn as sns
+import math, time, random, datetime
+
+#ignore warnings
+import warnings
+warnings.filterwarnings('ignore')
+
+# data Pre-processing
+from sklearn.preprocessing import OneHotEncoder, LabelEncoder, label_binarize
+
+#Machine Learning
+from sklearn.linear_model import LogisticRegression, SGDClassifier
+from sklearn.naive_bayes import GaussianNB
+from sklearn.svm import LinearSVC
+from sklearn.ensemble import GradientBoostingClassifier
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.tree import DecisionTreeClassifier
+from sklearn import model_selection, tree, preprocessing, metrics, linear_model
+from sklearn.metrics import accuracy_score
+from sklearn.metrics import confusion_matrix
+from sklearn.metrics import classification_report
+
+# Input data files are available in the "../input/" directory.
+# For example, running this (by clicking run or pressing Shift+Enter) will list the files in the input directory
+
+import os
+print(os.listdir("../input"))
+
+# Any results you write to the current directory are saved as output.
+#print("hello world")
+train = pd.read_csv('../input/train.csv')
+test = pd.read_csv('../input/test.csv')
+gender_sub = pd.read_csv('../input/gender_submission.csv')
+#train.info()
+#print(train.head(120))
+#train["Sex"].value_counts() #male    577 & female    314
+
+#plt.scatter(train.Age, train.Pclass)
+#train.shape #891 rows, 12 cols
+#test.shape #418 rows, 11 cols
+#train.describe()
+#missingno.matrix(train, figsize=(30,5))
+
+# count the number of NaN values in each column
+#print(train.isnull().sum())
+#sns.boxplot(train=train,width=0.5,fliersize=5)
+#sns.set(rc={'figure.figsize':(2,5)})
+
+#sns.countplot(x='Survived',hue='Sex',data=train,palette='Set2')
+#sns.boxplot(x='Pclass',y='Age',data=train)
+#sns.boxplot(x='Pclass',y='Survived',data=train)
+
+def find_missing_values(df, columns):
+    """
+    Finds number of rows where certain columns are missing values.
+    ::param_df:: = target dataframe
+    ::param_columns:: = list of columns
+    """
+    missing_vals = {}
+    print("Number of missing or NaN values for each column:")
+    df_length = len(df)
+    for column in columns:
+        total_column_isnotnull_values = df[column].value_counts().sum()
+        total_column_isnull_values = df[column].isnull().sum()
+        total_column_values = total_column_isnotnull_values + total_column_isnull_values
+        #print(total_column_isnotnull_values)
+        #print(total_column_isnull_values)
+        #print(total_column_values)
+        #print(df_length-total_column_isnotnull_values),2)
+        #missing values and it's percentage
+        missing_vals[column] = df_length-total_column_isnotnull_values,str(math.ceil(round((total_column_isnull_values/total_column_values)*100,2)))+"%"
+    return missing_vals
+
+train_missing_values = find_missing_values(train, columns=train.columns)
+print("train missing values Before:", train_missing_values)
+test_missing_values = find_missing_values(test, columns=test.columns)
+print("test missing values Before:", test_missing_values)
+
+#print(train.Survived.value_counts())
+print(train.columns.values)
+#print(train["Age"])
+#train.isnull()
+
+grid = sns.FacetGrid(train, col='Survived', row='Pclass',
+size=2.2, aspect=1.6)
+grid.map(plt.hist, 'Age', alpha=.5, bins=20)
+grid.add_legend();
+
+#------------ data preprocessing -----------
+#drop column passengerid, survival does not depend on this col
+train = train.drop(['PassengerId'], axis=1)
+#train.info()
+#train.head(15)
+
+#train1 = pd.read_csv('../input/train.csv', na_values=['NULL'])
+#train1
+
+#replace missing values in Age column
+#per https://towardsdatascience.com/handling-missing-values-in-machine-learning-part-1-dda69d4f88ca,
+#one option would be to randomly fill them with values close to the mean value but within one standard deviation
+#create function w/ no return
+def replaceAgeValues(df):
+    data = [df]
+    for dataset in data:
+        mean = df["Age"].mean()
+        std = df["Age"].std()
+        is_null = dataset["Age"].isnull().sum()
+        # compute random numbers between the mean, std and is_null
+        rand_age = np.random.randint(mean - std, mean + std,size = is_null)
+        # fill NaN values in Age column with random values generated
+        age_slice = dataset["Age"].copy()
+        age_slice[np.isnan(age_slice)] = rand_age
+        dataset["Age"] = age_slice
+        dataset["Age"] = df["Age"].astype(int)
+
+#replace Age col in both train and test
+replaceAgeValues(train)
+replaceAgeValues(test)
+#this should be zero
+#print(train["Age"].isnull().sum()) #returned zero, so Age col has no nulls/missing vals
+#print(test["Age"].isnull().sum()) 
+
+#pd.set_option('display.max_columns', 11)
+#print(test.head(25))
+#train["Age"]
+
+#fill Embarked with most common value
+#train['Embarked'].describe()
+def replaceEmbValues(df):
+    common_value = 'S'
+    data = [df]
+    for dataset in data:
+        dataset['Embarked'] = dataset['Embarked'].fillna(common_value)
+
+#replace Embarked col in both train and test
+replaceEmbValues(train)
+replaceEmbValues(test)
+#this should be zero
+#print(train["Embarked"].isnull().sum())
+#print(test["Embarked"].isnull().sum())
+
+#fill Fare with mean value
+#print(test["Fare"].describe())
+def replaceFareValues(df):
+    data = [df]
+    for dataset in data:
+        dataset['Fare'] = dataset['Fare'].fillna(df["Fare"].mean())
+
+#replace Fare col in both train and test
+replaceFareValues(train)
+replaceFareValues(test)
+#this should be zero
+#print(train["Fare"].isnull().sum())
+#print(test["Fare"].isnull().sum())
+
+train_missing_values = find_missing_values(train, columns=train.columns)
+print("train missing values After:", train_missing_values)
+test_missing_values = find_missing_values(test, columns=test.columns)
+print("test missing values After:", test_missing_values)
+
+#drop column Cabin for now
+train = train.drop(['Cabin'], axis=1)
+test = test.drop(['Cabin'], axis=1)
+
+#drop column Name for now
+train = train.drop(['Name'], axis=1)
+test = test.drop(['Name'], axis=1)
+
+#drop column Ticket for now
+train = train.drop(['Ticket'], axis=1)
+test = test.drop(['Ticket'], axis=1)
+
+train.info()
+test.info()
+
+#convert Embarked col into numeric, else we get a ValueError
+ports = {"S": 0, "C": 1, "Q": 2}
+data = [train, test]
+for dataset in data:
+    dataset['Embarked'] = dataset['Embarked'].map(ports)
+
+#convert Sex col into numeric, else we get a ValueError: could not convert string to float: 'male'
+genders = {"male": 0, "female": 1}
+data = [train, test]
+for dataset in data:
+    dataset['Sex'] = dataset['Sex'].map(genders)
+
+#train models
+# Split the dataframe into data and labels
+y_train = train.Survived # labels
+X_train = train.drop("Survived", axis=1) # data
+
+#X_test = test.drop("PassengerId", axis=1).copy()
+#y_test = train["PassengerId"]
+#print(X_train)
+#print(Y_train)
+#print(y_test)
+#y_test = test["PassengerId"]
+
+# Function that runs the requested algorithm and returns the cv accuracy metrics
+def fitmodel(modeltypeobj, X_train, y_train, cv):
+    
+    print('-' * 50)
+    start_time = time.time() #begin
+    
+    # One Pass
+    model = modeltypeobj.fit(X_train, y_train)
+    acc = round(model.score(X_train, y_train) * 100, 2)
+    
+    # Cross Validation 
+    # CV is a more robust metric because it is going through the train data several times(10 times a.k.a 10-fold)
+    # and predict and repeat with diff versions of the same train data
+    train_pred = model_selection.cross_val_predict(modeltypeobj, X_train, y_train, cv=cv, n_jobs = -1)
+    
+    # Cross-validation accuracy metric
+    acc_cv = round(metrics.accuracy_score(y_train, train_pred) * 100, 2)
+    
+    end_time = (time.time() - start_time) #end
+    
+    return train_pred, acc, acc_cv, start_time, end_time
+
+# Logistic Regression
+logmodel = LogisticRegression()
+train_pred, acc, acc_cv, start_time, end_time = fitmodel(logmodel, X_train, y_train, 10)
+print("Logistic Regression")
+print("Accuracy: %s" % acc)
+print("Accuracy CV 10-Fold: %s" % acc_cv)
+print("Running Time: %s" % datetime.timedelta(seconds=end_time))
+print('-' * 50)
+
+# k-Nearest Neighbours
+knnmodel = KNeighborsClassifier()
+train_pred, acc, acc_cv, start_time, end_time = fitmodel(knnmodel, X_train, y_train, 10)
+print("k-Nearest Neighbours")
+print("Accuracy: %s" % acc)
+print("Accuracy CV 10-Fold: %s" % acc_cv)
+print("Running Time: %s" % datetime.timedelta(seconds=end_time))
+print('-' * 50)
+
+# Gaussian Naive Bayes
+gnbmodel = GaussianNB()
+train_pred, acc, acc_cv, start_time, end_time = fitmodel(gnbmodel, X_train, y_train, 10)
+print("Gaussian Naive Bayes")
+print("Accuracy: %s" % acc)
+print("Accuracy CV 10-Fold: %s" % acc_cv)
+print("Running Time: %s" % datetime.timedelta(seconds=end_time))
+print('-' * 50)
+
+# Linear SVC
+lsvcmodel = LinearSVC()
+train_pred, acc, acc_cv, start_time, end_time = fitmodel(lsvcmodel, X_train, y_train, 10)
+print("Linear SVC")
+print("Accuracy: %s" % acc)
+print("Accuracy CV 10-Fold: %s" % acc_cv)
+print("Running Time: %s" % datetime.timedelta(seconds=end_time))
+print('-' * 50)
+
+# Stochastic Gradient Descent
+sgdmodel = SGDClassifier()
+train_pred, acc, acc_cv, start_time, end_time = fitmodel(sgdmodel, X_train, y_train, 10)
+print("Stochastic Gradient Descent")
+print("Accuracy: %s" % acc)
+print("Accuracy CV 10-Fold: %s" % acc_cv)
+print("Running Time: %s" % datetime.timedelta(seconds=end_time))
+print('-' * 50)
+
+# Decision Tree Classifier
+dtcmodel = DecisionTreeClassifier()
+train_pred, acc, acc_cv, start_time, end_time = fitmodel(dtcmodel, X_train, y_train, 10)
+print("Decision Tree Classifier")
+print("Accuracy: %s" % acc)
+print("Accuracy CV 10-Fold: %s" % acc_cv)
+print("Running Time: %s" % datetime.timedelta(seconds=end_time))
+print('-' * 50)
+
+# Gradient Boosting Trees
+gbcmodel = GradientBoostingClassifier()
+train_pred, acc, acc_cv, start_time, end_time = fitmodel(gbcmodel, X_train, y_train, 10)
+print("Gradient Boosting Trees")
+print("Accuracy: %s" % acc)
+print("Accuracy CV 10-Fold: %s" % acc_cv)
+print("Running Time: %s" % datetime.timedelta(seconds=end_time))
+print('-' * 50)
+
+# Feature Importance (Which features of the best model were most important for making predictions?)
+def feature_importance(model, data):
+    """
+    Function to show which features are most important in the model.
+    ::param_model:: Which model to use?
+    ::param_data:: What data to use?
+    """
+    fea_imp = pd.DataFrame({'imp': model.feature_importances_, 'col': data.columns})
+    fea_imp = fea_imp.sort_values(['imp', 'col'], ascending=[True, False]).iloc[-30:] 
+    fea_imp = fea_imp.plot(kind='barh', x='col', y='imp', figsize=(20, 10))
+    return fea_imp
+    #plt.savefig('model_feature_importance.png')
+
+# Plot the feature importance scores
+feature_importance(gbcmodel, X_train)
+
+#use the model with the highest cross-validation accuracy score to make a prediction on the test 
+#dataset and then submit predictions to Kaggle
+
+# in this case, we'll use Gradient Boosting Trees
+# the test dataframe should look the same as X_train dataframe, so, test.head() = X_train.head()
+
+# Create a list of columns to be used for the predictions
+wanted_test_columns = X_train.columns
+#print(wanted_test_columns)
+
+# Make a prediction using the Gradient Boosting Trees model on the test set columns
+predictions = gbcmodel.predict(test[wanted_test_columns].apply(LabelEncoder().fit_transform))
+
+# review some predictions on test set
+predictions[:25] #perfect.. 
+                 #returns => array([0, 1, 0, 0, 1, 0, 1, 0, 1, 0, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 1, 1, 1, 0, 1])
+
+# Create a submisison dataframe and append the relevant columns
+submission = pd.DataFrame()
+submission['PassengerId'] = test['PassengerId']
+submission['Survived'] = predictions # our model predictions on the test dataset
+submission.head()
+
+# Convert submisison dataframe to csv for submission to csv for Kaggle submisison
+# you could use any filename.
+submission.to_csv('vk_gbcmodel_submission.csv', index=False)
+print('Submission CSV is ready!')
+
+# Check the submission csv to make sure it's in the right format
+submissions_check = pd.read_csv('vk_gbcmodel_submission.csv')
+submissions_check.head()
+['test.csv', 'train.csv', 'gender_submission.csv']
+Number of missing or NaN values for each column:
+train missing values Before: {'PassengerId': (0, '0%'), 'Survived': (0, '0%'), 'Pclass': (0, '0%'), 'Name': (0, '0%'), 'Sex': (0, '0%'), 'Age': (177, '20%'), 'SibSp': (0, '0%'), 'Parch': (0, '0%'), 'Ticket': (0, '0%'), 'Fare': (0, '0%'), 'Cabin': (687, '78%'), 'Embarked': (2, '1%')}
+Number of missing or NaN values for each column:
+test missing values Before: {'PassengerId': (0, '0%'), 'Pclass': (0, '0%'), 'Name': (0, '0%'), 'Sex': (0, '0%'), 'Age': (86, '21%'), 'SibSp': (0, '0%'), 'Parch': (0, '0%'), 'Ticket': (0, '0%'), 'Fare': (1, '1%'), 'Cabin': (327, '79%'), 'Embarked': (0, '0%')}
+['PassengerId' 'Survived' 'Pclass' 'Name' 'Sex' 'Age' 'SibSp' 'Parch'
+ 'Ticket' 'Fare' 'Cabin' 'Embarked']
+Number of missing or NaN values for each column:
+train missing values After: {'Survived': (0, '0%'), 'Pclass': (0, '0%'), 'Name': (0, '0%'), 'Sex': (0, '0%'), 'Age': (0, '0%'), 'SibSp': (0, '0%'), 'Parch': (0, '0%'), 'Ticket': (0, '0%'), 'Fare': (0, '0%'), 'Cabin': (687, '78%'), 'Embarked': (0, '0%')}
+Number of missing or NaN values for each column:
+test missing values After: {'PassengerId': (0, '0%'), 'Pclass': (0, '0%'), 'Name': (0, '0%'), 'Sex': (0, '0%'), 'Age': (0, '0%'), 'SibSp': (0, '0%'), 'Parch': (0, '0%'), 'Ticket': (0, '0%'), 'Fare': (0, '0%'), 'Cabin': (327, '79%'), 'Embarked': (0, '0%')}
+<class 'pandas.core.frame.DataFrame'>
+RangeIndex: 891 entries, 0 to 890
+Data columns (total 8 columns):
+Survived    891 non-null int64
+Pclass      891 non-null int64
+Sex         891 non-null object
+Age         891 non-null int64
+SibSp       891 non-null int64
+Parch       891 non-null int64
+Fare        891 non-null float64
+Embarked    891 non-null object
+dtypes: float64(1), int64(5), object(2)
+memory usage: 55.8+ KB
+<class 'pandas.core.frame.DataFrame'>
+RangeIndex: 418 entries, 0 to 417
+Data columns (total 8 columns):
+PassengerId    418 non-null int64
+Pclass         418 non-null int64
+Sex            418 non-null object
+Age            418 non-null int64
+SibSp          418 non-null int64
+Parch          418 non-null int64
+Fare           418 non-null float64
+Embarked       418 non-null object
+dtypes: float64(1), int64(5), object(2)
+memory usage: 26.2+ KB
+--------------------------------------------------
+Logistic Regression
+Accuracy: 80.13
+Accuracy CV 10-Fold: 79.46
+Running Time: 0:00:03.427009
+--------------------------------------------------
+--------------------------------------------------
+k-Nearest Neighbours
+Accuracy: 79.46
+Accuracy CV 10-Fold: 65.99
+Running Time: 0:00:00.167337
+--------------------------------------------------
+--------------------------------------------------
+Gaussian Naive Bayes
+Accuracy: 79.46
+Accuracy CV 10-Fold: 78.56
+Running Time: 0:00:00.097114
+--------------------------------------------------
+--------------------------------------------------
+Linear SVC
+Accuracy: 78.9
+Accuracy CV 10-Fold: 73.63
+Running Time: 0:00:00.761403
+--------------------------------------------------
+--------------------------------------------------
+Stochastic Gradient Descent
+Accuracy: 73.29
+Accuracy CV 10-Fold: 63.3
+Running Time: 0:00:00.091360
+--------------------------------------------------
+--------------------------------------------------
+Decision Tree Classifier
+Accuracy: 98.2
+Accuracy CV 10-Fold: 76.43
+Running Time: 0:00:00.141200
+--------------------------------------------------
+--------------------------------------------------
+Gradient Boosting Trees
+Accuracy: 88.78
+Accuracy CV 10-Fold: 82.6
+Running Time: 0:00:00.556687
+--------------------------------------------------
+Submission CSV is ready!
+
+sample:
+PassengerId	Survived
+0	892	0
+1	893	0
+2	894	0
+3	895	0
+4	896	1
