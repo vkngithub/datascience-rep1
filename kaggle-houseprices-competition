@@ -1,1 +1,210 @@
-test
+# This Python 3 environment comes with many helpful analytics libraries installed
+# It is defined by the kaggle/python docker image: https://github.com/kaggle/docker-python
+# For example, here's several helpful packages to load in 
+import os
+import numpy as np # linear algebra
+import pandas as pd # data processing, CSV file I/O (e.g. pd.read_csv)
+import matplotlib.pyplot as plt
+import missingno
+import math, time, random, datetime
+import warnings
+import seaborn as sns
+
+from numpy import nan as NA
+from sklearn.model_selection import train_test_split
+from sklearn import model_selection, metrics, linear_model
+from sklearn.linear_model import LinearRegression
+from sklearn.metrics import mean_squared_error
+from sklearn.preprocessing import StandardScaler
+
+warnings.filterwarnings('ignore')
+%matplotlib inline
+
+# Input data files are available in the "../input/" directory.
+# For example, running this (by clicking run or pressing Shift+Enter) will list the files in the input directory
+
+print(os.listdir("../input"))
+
+# Any results you write to the current directory are saved as output.
+train = pd.read_csv('../input/train.csv')
+test = pd.read_csv('../input/test.csv')
+sample_sub = pd.read_csv('../input/sample_submission.csv')
+#train.head
+#test.head
+#sample_sub.head
+#train.shape #(1460, 81)
+#test.shape #(1459, 80)
+#train.info()
+#test.info() #SalePrice column is missing in test df
+##missingno.matrix(train, figsize=(30,5))
+
+#df1 = pd.DataFrame(np.random.randn(7, 3))
+#df1
+#df1.iloc[:3, 1] = NA #replace with NAN -> top 3 rows, column #1
+#df1.iloc[:2, 0] = NA #replace with NAN -> top 2 rows, column #0
+#df1
+
+def find_missing_values(df, columns):
+    """
+    Finds number of rows where certain columns are missing values.
+    ::param_df:: = target dataframe
+    ::param_columns:: = list of columns
+    """
+    missing_vals = {}
+    print("Number of missing or NaN values for each column:")
+    df_length = len(df)
+    for column in columns:
+        total_column_isnotnull_values = df[column].value_counts().sum()
+        total_column_isnull_values = df[column].isnull().sum()
+        total_column_values = total_column_isnotnull_values + total_column_isnull_values
+        #print(total_column_isnotnull_values)
+        #print(total_column_isnull_values)
+        #print(total_column_values)
+        #print(df_length-total_column_isnotnull_values),2)
+        #missing values and it's percentage
+        missing_vals[column] = df_length-total_column_isnotnull_values,str(math.ceil(round((total_column_isnull_values/total_column_values)*100,2)))+"%"
+    return missing_vals
+
+train_missing_values = find_missing_values(train, columns=train.columns)
+print("train missing values Before:", train_missing_values)
+
+plt.scatter(train['LotArea'], train['SalePrice'], color='red')
+plt.title('LotArea Vs SalePrice', fontsize=14)
+plt.xlabel('LotArea', fontsize=14)
+plt.ylabel('SalePrice', fontsize=14)
+plt.grid(True)
+plt.show()
+ 
+plt.scatter(train['YearBuilt'], train['SalePrice'], color='blue')
+plt.title('YearBuilt Vs SalePrice', fontsize=14)
+plt.xlabel('YearBuilt', fontsize=14)
+plt.ylabel('SalePrice', fontsize=14)
+plt.grid(True)
+plt.show()
+
+plt.scatter(train['OverallQual'], train['SalePrice'], color='green')
+plt.title('OverallQual Vs SalePrice', fontsize=14)
+plt.xlabel('OverallQual', fontsize=14)
+plt.ylabel('SalePrice', fontsize=14)
+plt.grid(True)
+plt.show()
+
+plt.scatter(train['1stFlrSF'], train['SalePrice'], color='violet')
+plt.title('1stFlrSF Vs SalePrice', fontsize=14)
+plt.xlabel('1stFlrSF', fontsize=14)
+plt.ylabel('SalePrice', fontsize=14)
+plt.grid(True)
+plt.show()
+
+plt.scatter(train['2ndFlrSF'], train['SalePrice'], color='brown')
+plt.title('2ndFlrSF Vs SalePrice', fontsize=14)
+plt.xlabel('2ndFlrSF', fontsize=14)
+plt.ylabel('SalePrice', fontsize=14)
+plt.grid(True)
+plt.show()
+
+sns.barplot(train.OverallQual,train.SalePrice)
+
+train["Neighborhood"].value_counts() #categorical attribute shows diff neighborhoods and the no. of rows
+print(train["Neighborhood"].value_counts())
+
+train.hist(bins=50, figsize=(20,15))#histogram for each numerical attribute in train df
+plt.show()
+
+print("Find most important features relative to target")
+corr = train.corr()
+corr.sort_values(["SalePrice"], ascending = False, inplace = True)
+print(corr.SalePrice)
+
+def handle_non_numerical_data(df):
+    columns = df.columns.values
+    for column in columns:
+        text_digit_vals = {}
+        
+        def convert_to_int(val): #another function
+            return text_digit_vals[val]
+
+        if df[column].dtype != np.int64 and df[column].dtype != np.float64:
+            #print("inside IF in func handle_non_numerical_data" , df.dtypes)
+            #print("inside IF in func handle_non_numerical_data" , column)
+            column_contents = df[column].values.tolist()
+            unique_elements = set(column_contents)
+            x = 0
+            for unique in unique_elements:
+                if unique not in text_digit_vals:
+                    text_digit_vals[unique] = x
+                    x+=1
+
+            df[column] = list(map(convert_to_int, df[column]))
+    return df
+
+#convert Neighborhood col into numeric, else we get a ValueError
+#mapping = {NAmes, CollgCr, OldTown, Edwards, Somerst, Gilbert, NridgHt, Sawyer , NWAmes , SawyerW, BrkSide, Crawfor, Mitchel, NoRidge, Timber , IDOTRR , ClearCr, SWISU, toneBr, 
+           #MeadowV, Blmngtn, BrDale , Veenker, NPkVill, Blueste}
+
+train_allnumeric = handle_non_numerical_data(train)#convert all non-numeric data into numeric data, hence new df 'train_new'
+
+#train_allnumeric.hist(bins=50, figsize=(20,15))#histogram for each numerical attribute in train df
+#plt.show()
+
+#print(train_new.Neighborhood)
+#print(train_new.head(1460))
+
+#do fillna() on multiple columns at once
+train_allnumeric = train_allnumeric.fillna(value=0)
+
+#splitting into training and cv for cross validation
+#X = train_allnumeric.loc[:,['LotArea','Neighborhood','OverallQual','YearBuilt','1stFlrSF','GarageYrBlt','MoSold','YrSold']]
+X = train_allnumeric.loc[:,['LotArea','Neighborhood','OverallQual','YearBuilt','MoSold','YrSold']]
+X_train, X_test, y_train, y_test = train_test_split(X,train_allnumeric.SalePrice)
+
+#perform feature-scaling (standardization)
+stdsc = StandardScaler()
+X_train_std = stdsc.fit_transform(X_train)
+print(X_train_std)
+X_test_std = stdsc.transform(X_test)
+
+#--------------------------
+# Function that runs the requested algorithm and returns the cv accuracy metrics
+def fitmodel(modeltypeobj, X_train, y_train, cv):
+    
+    print('-' * 50)
+    start_time = time.time() #begin
+    
+    # One Pass
+    model = modeltypeobj.fit(X_train, y_train)
+    acc = round(model.score(X_train, y_train) * 100, 2)
+    
+    # Cross Validation 
+    # CV is a more robust metric because it is going through the train data several times(10 times a.k.a 10-fold)
+    # and predict and repeat with diff versions of the same train data
+    train_pred = model_selection.cross_val_predict(modeltypeobj, X_train, y_train, cv=cv, n_jobs = -1)
+    
+    # Cross-validation accuracy metric
+    #acc_cv = round(metrics.accuracy_score(y_train, train_pred) * 100, 2)
+    
+    end_time = (time.time() - start_time) #end
+    
+    #return train_pred, acc, acc_cv, start_time, end_time
+    return train_pred, acc, start_time, end_time
+
+# Linear Regression
+linmodel = LinearRegression()
+#train_pred, acc, acc_cv, start_time, end_time = fitmodel(linmodel, X_train, y_train, 10)
+train_pred, acc, start_time, end_time = fitmodel(linmodel, X_train_std, y_train, 10)
+print("Linear Regression")
+print("Accuracy: %s" % acc)
+#print("Accuracy CV 10-Fold: %s" % acc_cv)
+print("Running Time: %s" % datetime.timedelta(seconds=end_time))
+print('-' * 50)
+
+#training the model
+#linear_reg = LinearRegression()
+#linear_reg.fit(x_train,y_train)
+
+#predicting on cv
+#pred = linear_reg.predict(x_cv)
+
+#calculating mse
+#mse = np.mean((pred - y_cv)**2)
+#print('mse is: ', mse)
