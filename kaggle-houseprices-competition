@@ -162,19 +162,22 @@ print('train_allnumeric.SalePrice.describe(): ', train_allnumeric.SalePrice.desc
 
 #When performing regression, sometimes it makes sense to log-transform the target variable when it is skewed. 
 #One reason for this is to improve the linearity of the data. 
-plt.hist(train.SalePrice, color='blue')
+plt.hist(train_allnumeric.SalePrice, color='blue')
 plt.show()
 
-target = np.log(train_allnumeric.SalePrice)
-print ("Skew is:", target.skew())
-plt.hist(target, color='red')
+y = np.log(train_allnumeric.SalePrice)
+X = train_allnumeric.drop(['SalePrice', 'Id'], axis=1)
+
+print ("Skew is:", y.skew())
+plt.hist(y, color='red')
 plt.show()
 
 #splitting into training and cv for cross validation
 #X = train_allnumeric.loc[:,['LotArea','Neighborhood','OverallQual','YearBuilt','1stFlrSF','GarageYrBlt','MoSold','YrSold']]
 #X = train_allnumeric.loc[:,['LotArea','Neighborhood','OverallQual','YearBuilt','MoSold','YrSold','GrLivArea']]
-X = train_allnumeric.loc[:,['YearBuilt']]
-X_train, X_test, y_train, y_test = train_test_split(X,train_allnumeric.SalePrice, test_size=0.2, random_state=0)
+#X = train_allnumeric.loc[:,['YearBuilt']]
+#X_train, X_test, y_train, y_test = train_test_split(X,train_allnumeric.SalePrice, test_size=0.2, random_state=0)
+X_train, X_test, y_train, y_test = train_test_split(X, y, random_state=42, test_size=.2)
 
 #perform feature-scaling (standardization)
 stdsc = StandardScaler()
@@ -190,37 +193,141 @@ def fitmodel(modeltypeobj, X_train, y_train, X_test, y_test, cv):
     print('-' * 50)
     start_time = time.time() #begin
     
-    # One Pass
+    #model fit
     model = modeltypeobj.fit(X_train, y_train)
-    acc = round(model.score(X_train, y_train) * 100, 2)
-    
+    #The r-squared value is a measure of how close the data are to the fitted regression line. 
+    #It takes a value between 0 and 1, 1 meaning that all of the variance in the target is explained by the data. 
+    #In general, a higher r-squared value means a better fit.
+    print ("R^2 is: \n", model.score(X_test, y_test))
+        
     # Cross Validation 
     # CV is a more robust metric because it is going through the train data several times(10 times a.k.a 10-fold)
     # and predict and repeat with diff versions of the same train data
-    train_pred = model_selection.cross_val_predict(modeltypeobj, X_train, y_train, cv=cv, n_jobs = -1)
-    
-    # Cross-validation accuracy metric -- this applies to classification problems only, so comment line below
-    #acc_cv = round(metrics.accuracy_score(y_train, train_pred) * 100, 2)    
-    #for regression problems, use RMSE to determine the accuracy of our model in predicting the target values.
-    y_pred = linmodel.predict(X_test)
+      
+    # Cross-validation accuracy metric -- this applies to classification problems only, so for regression 
+    #problems, use RMSE to determine the accuracy of our model in predicting the target values.
+    y_pred = model.predict(X_test)
     #negative R-squared simply means that the chosen model (with its constraints) fits the data really poorly
-    print('Linear Regression R squared": %.4f' % linmodel.score(X_test, y_test))
-    lin_mse = mean_squared_error(y_pred, y_test)
-    rmse = np.sqrt(lin_mse)
-    #print('Linear Regression RMSE: %.4f' % rmse)
-
+    #The RMSE measures the distance between our predicted values and actual values.
+    rmse = mean_squared_error(y_test, y_pred)
+    print ('RMSE is: \n', rmse)
+    
     end_time = (time.time() - start_time) #end
     
     #return train_pred, acc, acc_cv, start_time, end_time
-    return train_pred, acc, rmse, start_time, end_time
+    return y_pred, rmse, start_time, end_time
 
 # Linear Regression
-linmodel = LinearRegression()
+linmodel = linear_model.LinearRegression()
 #train_pred, acc, acc_cv, start_time, end_time = fitmodel(linmodel, X_train, y_train, X_test, y_test, 10)
-train_pred, acc, rmse, start_time, end_time = fitmodel(linmodel, X_train_std, y_train, X_test, y_test, 10)
+y_pred, rmse, start_time, end_time = fitmodel(linmodel, X_train_std, y_train, X_test_std, y_test, 10)
 print("Linear Regression")
 print("Accuracy: %s" % acc)
 print("Accuracy RMSE: %s" % rmse)
 print("Running Time: %s" % datetime.timedelta(seconds=end_time))
 print('-' * 50)
 
+#If our predicted values were identical to the actual values, this graph would be a straight line
+actual_values = y_test
+plt.scatter(y_pred, actual_values, alpha=.7, color='b') #alpha helps to show overlapping data
+plt.xlabel('Predicted Price')
+plt.ylabel('Actual Price')
+plt.title('Linear Regression Model')
+plt.show()
+
+
+o/p:
+
+
+['test.csv', 'train.csv', 'sample_submission.csv', 'data_description.txt']
+Number of missing or NaN values for each column:
+train missing values Before: {'Id': (0, '0%'), 'MSSubClass': (0, '0%'), 'MSZoning': (0, '0%'), 'LotFrontage': (259, '18%'), 'LotArea': (0, '0%'), 'Street': (0, '0%'), 'Alley': (1369, '94%'), 'LotShape': (0, '0%'), 'LandContour': (0, '0%'), 'Utilities': (0, '0%'), 'LotConfig': (0, '0%'), 'LandSlope': (0, '0%'), 'Neighborhood': (0, '0%'), 'Condition1': (0, '0%'), 'Condition2': (0, '0%'), 'BldgType': (0, '0%'), 'HouseStyle': (0, '0%'), 'OverallQual': (0, '0%'), 'OverallCond': (0, '0%'), 'YearBuilt': (0, '0%'), 'YearRemodAdd': (0, '0%'), 'RoofStyle': (0, '0%'), 'RoofMatl': (0, '0%'), 'Exterior1st': (0, '0%'), 'Exterior2nd': (0, '0%'), 'MasVnrType': (8, '1%'), 'MasVnrArea': (8, '1%'), 'ExterQual': (0, '0%'), 'ExterCond': (0, '0%'), 'Foundation': (0, '0%'), 'BsmtQual': (37, '3%'), 'BsmtCond': (37, '3%'), 'BsmtExposure': (38, '3%'), 'BsmtFinType1': (37, '3%'), 'BsmtFinSF1': (0, '0%'), 'BsmtFinType2': (38, '3%'), 'BsmtFinSF2': (0, '0%'), 'BsmtUnfSF': (0, '0%'), 'TotalBsmtSF': (0, '0%'), 'Heating': (0, '0%'), 'HeatingQC': (0, '0%'), 'CentralAir': (0, '0%'), 'Electrical': (1, '1%'), '1stFlrSF': (0, '0%'), '2ndFlrSF': (0, '0%'), 'LowQualFinSF': (0, '0%'), 'GrLivArea': (0, '0%'), 'BsmtFullBath': (0, '0%'), 'BsmtHalfBath': (0, '0%'), 'FullBath': (0, '0%'), 'HalfBath': (0, '0%'), 'BedroomAbvGr': (0, '0%'), 'KitchenAbvGr': (0, '0%'), 'KitchenQual': (0, '0%'), 'TotRmsAbvGrd': (0, '0%'), 'Functional': (0, '0%'), 'Fireplaces': (0, '0%'), 'FireplaceQu': (690, '48%'), 'GarageType': (81, '6%'), 'GarageYrBlt': (81, '6%'), 'GarageFinish': (81, '6%'), 'GarageCars': (0, '0%'), 'GarageArea': (0, '0%'), 'GarageQual': (81, '6%'), 'GarageCond': (81, '6%'), 'PavedDrive': (0, '0%'), 'WoodDeckSF': (0, '0%'), 'OpenPorchSF': (0, '0%'), 'EnclosedPorch': (0, '0%'), '3SsnPorch': (0, '0%'), 'ScreenPorch': (0, '0%'), 'PoolArea': (0, '0%'), 'PoolQC': (1453, '100%'), 'Fence': (1179, '81%'), 'MiscFeature': (1406, '97%'), 'MiscVal': (0, '0%'), 'MoSold': (0, '0%'), 'YrSold': (0, '0%'), 'SaleType': (0, '0%'), 'SaleCondition': (0, '0%'), 'SalePrice': (0, '0%')}
+
+
+
+NAmes      225
+CollgCr    150
+OldTown    113
+Edwards    100
+Somerst     86
+Gilbert     79
+NridgHt     77
+Sawyer      74
+NWAmes      73
+SawyerW     59
+BrkSide     58
+Crawfor     51
+Mitchel     49
+NoRidge     41
+Timber      38
+IDOTRR      37
+ClearCr     28
+StoneBr     25
+SWISU       25
+Blmngtn     17
+MeadowV     17
+BrDale      16
+Veenker     11
+NPkVill      9
+Blueste      2
+Name: Neighborhood, dtype: int64
+
+Find most important features relative to target
+SalePrice       1.000000
+OverallQual     0.790982
+GrLivArea       0.708624
+GarageCars      0.640409
+GarageArea      0.623431
+TotalBsmtSF     0.613581
+1stFlrSF        0.605852
+FullBath        0.560664
+TotRmsAbvGrd    0.533723
+YearBuilt       0.522897
+Name: SalePrice, dtype: float64 
+
+KitchenAbvGr    -0.135907
+Electrical      -0.142681
+BsmtExposure    -0.193079
+Neighborhood    -0.214913
+Exterior1st     -0.233086
+SaleCondition   -0.236484
+Exterior2nd     -0.261249
+Foundation      -0.441842
+KitchenQual     -0.589189
+ExterQual       -0.636884
+Name: SalePrice, dtype: float64
+train_allnumeric.SalePrice.describe():  count      1460.000000
+mean     180921.195890
+std       79442.502883
+min       34900.000000
+25%      129975.000000
+50%      163000.000000
+75%      214000.000000
+max      755000.000000
+Name: SalePrice, dtype: float64
+
+Skew is: 0.12133506220520406
+
+[[-0.8667643   0.40371455  0.35953495 ...  1.65006527 -0.3084789
+   0.43940255]
+ [ 0.07410996  0.40371455  0.04874271 ...  0.89367742 -0.3084789
+   0.43940255]
+ [-0.63154574  0.40371455  0.27477343 ...  0.13728958 -0.3084789
+   0.43940255]
+ ...
+ [-0.8667643   0.40371455  0.07699655 ... -1.37548612 -0.3084789
+   0.43940255]
+ [-0.16110861  0.40371455 -0.06427265 ... -0.61909827 -0.3084789
+   0.43940255]
+ [ 1.48542135  0.40371455 -0.12078033 ...  0.89367742 -0.3084789
+   0.43940255]]
+--------------------------------------------------
+R^2 is: 
+ 0.8671007628815164
+RMSE is: 
+ 0.024800794211141473
+Linear Regression
+Accuracy: 89.52
+Accuracy RMSE: 0.024800794211141473
+Running Time: 0:00:00.011039
+--------------------------------------------------
