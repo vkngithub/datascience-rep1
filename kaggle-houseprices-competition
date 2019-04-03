@@ -210,7 +210,7 @@ def fitmodel(modeltypeobj, X_train, y_train, X_test, y_test, cv):
     #negative R-squared simply means that the chosen model (with its constraints) fits the data really poorly
     #The RMSE measures the distance between our predicted values and actual values.
     rmse = mean_squared_error(y_test, y_pred)
-    print ('RMSE is: \n', rmse)
+    #print ('RMSE is: \n', rmse)
     
     end_time = (time.time() - start_time) #end
     
@@ -222,7 +222,7 @@ linmodel = linear_model.LinearRegression()
 #train_pred, acc, acc_cv, start_time, end_time = fitmodel(linmodel, X_train, y_train, X_test, y_test, 10)
 y_pred, rmse, start_time, end_time = fitmodel(linmodel, X_train_std, y_train, X_test_std, y_test, 10)
 print("Linear Regression")
-print("Accuracy: %s" % acc)
+#print("Accuracy: %s" % acc)
 print("Accuracy RMSE: %s" % rmse)
 print("Running Time: %s" % datetime.timedelta(seconds=end_time))
 print('-' * 50)
@@ -235,6 +235,7 @@ plt.ylabel('Actual Price')
 plt.title('Linear Regression Model')
 plt.show()
 
+######################
 
 o/p:
 
@@ -324,10 +325,7 @@ Skew is: 0.12133506220520406
 --------------------------------------------------
 R^2 is: 
  0.8671007628815164
-RMSE is: 
- 0.024800794211141473
 Linear Regression
-Accuracy: 89.52
 Accuracy RMSE: 0.024800794211141473
-Running Time: 0:00:00.011039
+Running Time: 0:00:00.011587
 --------------------------------------------------
