@@ -103,18 +103,13 @@ plt.ylabel('SalePrice', fontsize=14)
 plt.grid(True)
 plt.show()
 
-sns.barplot(train.OverallQual,train.SalePrice)
+#sns.barplot(train.OverallQual,train.SalePrice)
 
 train["Neighborhood"].value_counts() #categorical attribute shows diff neighborhoods and the no. of rows
 print(train["Neighborhood"].value_counts())
 
 train.hist(bins=50, figsize=(20,15))#histogram for each numerical attribute in train df
 plt.show()
-
-print("Find most important features relative to target")
-corr = train.corr()
-corr.sort_values(["SalePrice"], ascending = False, inplace = True)
-print(corr.SalePrice)
 
 def handle_non_numerical_data(df):
     columns = df.columns.values
@@ -153,10 +148,33 @@ train_allnumeric = handle_non_numerical_data(train)#convert all non-numeric data
 #do fillna() on multiple columns at once
 train_allnumeric = train_allnumeric.fillna(value=0)
 
+print("Find most important features relative to target")
+corr = train_allnumeric.corr()
+corr['SalePrice'].sort_values(ascending = False, inplace = True)
+print(corr.SalePrice)
+
+print('train_allnumeric.SalePrice.describe(): ', train_allnumeric.SalePrice.describe())
+#o/p of above is:
+#count      1460.000000 | mean     180921.195890 | std       79442.502883 | min       34900.000000
+#25%      129975.000000 | 50%      163000.000000 | 75%      214000.000000 | max      755000.000000
+#interpretation: The average sale price of a house in our dataset is close to $180,000, 
+#with most of the values falling within the $130,000 to $215,000 range.
+
+#When performing regression, sometimes it makes sense to log-transform the target variable when it is skewed. 
+#One reason for this is to improve the linearity of the data. 
+plt.hist(train.SalePrice, color='blue')
+plt.show()
+
+target = np.log(train_allnumeric.SalePrice)
+print ("Skew is:", target.skew())
+plt.hist(target, color='red')
+plt.show()
+
 #splitting into training and cv for cross validation
 #X = train_allnumeric.loc[:,['LotArea','Neighborhood','OverallQual','YearBuilt','1stFlrSF','GarageYrBlt','MoSold','YrSold']]
-X = train_allnumeric.loc[:,['LotArea','Neighborhood','OverallQual','YearBuilt','MoSold','YrSold']]
-X_train, X_test, y_train, y_test = train_test_split(X,train_allnumeric.SalePrice)
+#X = train_allnumeric.loc[:,['LotArea','Neighborhood','OverallQual','YearBuilt','MoSold','YrSold','GrLivArea']]
+X = train_allnumeric.loc[:,['YearBuilt']]
+X_train, X_test, y_train, y_test = train_test_split(X,train_allnumeric.SalePrice, test_size=0.2, random_state=0)
 
 #perform feature-scaling (standardization)
 stdsc = StandardScaler()
@@ -166,8 +184,9 @@ X_test_std = stdsc.transform(X_test)
 
 #--------------------------
 # Function that runs the requested algorithm and returns the cv accuracy metrics
-def fitmodel(modeltypeobj, X_train, y_train, cv):
+def fitmodel(modeltypeobj, X_train, y_train, X_test, y_test, cv):
     
+    #cv is cross validation fold value
     print('-' * 50)
     start_time = time.time() #begin
     
@@ -180,31 +199,27 @@ def fitmodel(modeltypeobj, X_train, y_train, cv):
     # and predict and repeat with diff versions of the same train data
     train_pred = model_selection.cross_val_predict(modeltypeobj, X_train, y_train, cv=cv, n_jobs = -1)
     
-    # Cross-validation accuracy metric
-    #acc_cv = round(metrics.accuracy_score(y_train, train_pred) * 100, 2)
-    
+    # Cross-validation accuracy metric -- this applies to classification problems only, so comment line below
+    #acc_cv = round(metrics.accuracy_score(y_train, train_pred) * 100, 2)    
+    #for regression problems, use RMSE to determine the accuracy of our model in predicting the target values.
+    y_pred = linmodel.predict(X_test)
+    #negative R-squared simply means that the chosen model (with its constraints) fits the data really poorly
+    print('Linear Regression R squared": %.4f' % linmodel.score(X_test, y_test))
+    lin_mse = mean_squared_error(y_pred, y_test)
+    rmse = np.sqrt(lin_mse)
+    #print('Linear Regression RMSE: %.4f' % rmse)
+
     end_time = (time.time() - start_time) #end
     
     #return train_pred, acc, acc_cv, start_time, end_time
-    return train_pred, acc, start_time, end_time
+    return train_pred, acc, rmse, start_time, end_time
 
 # Linear Regression
 linmodel = LinearRegression()
-#train_pred, acc, acc_cv, start_time, end_time = fitmodel(linmodel, X_train, y_train, 10)
-train_pred, acc, start_time, end_time = fitmodel(linmodel, X_train_std, y_train, 10)
+#train_pred, acc, acc_cv, start_time, end_time = fitmodel(linmodel, X_train, y_train, X_test, y_test, 10)
+train_pred, acc, rmse, start_time, end_time = fitmodel(linmodel, X_train_std, y_train, X_test, y_test, 10)
 print("Linear Regression")
 print("Accuracy: %s" % acc)
-#print("Accuracy CV 10-Fold: %s" % acc_cv)
+print("Accuracy RMSE: %s" % rmse)
 print("Running Time: %s" % datetime.timedelta(seconds=end_time))
 print('-' * 50)
-
-#training the model
-#linear_reg = LinearRegression()
-#linear_reg.fit(x_train,y_train)
-
-#predicting on cv
-#pred = linear_reg.predict(x_cv)
-
-#calculating mse
-#mse = np.mean((pred - y_cv)**2)
-#print('mse is: ', mse)
