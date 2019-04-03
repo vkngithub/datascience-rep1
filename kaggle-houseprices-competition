@@ -150,9 +150,9 @@ train_allnumeric = train_allnumeric.fillna(value=0)
 
 print("Find most important features relative to target")
 corr = train_allnumeric.corr()
-corr['SalePrice'].sort_values(ascending = False, inplace = True)
-print(corr.SalePrice)
-
+print (corr['SalePrice'].sort_values(ascending=False)[:10], '\n') #+vely correlated
+print (corr['SalePrice'].sort_values(ascending=False)[-10:]) #-vely correlated
+ 
 print('train_allnumeric.SalePrice.describe(): ', train_allnumeric.SalePrice.describe())
 #o/p of above is:
 #count      1460.000000 | mean     180921.195890 | std       79442.502883 | min       34900.000000
@@ -223,3 +223,4 @@ print("Accuracy: %s" % acc)
 print("Accuracy RMSE: %s" % rmse)
 print("Running Time: %s" % datetime.timedelta(seconds=end_time))
 print('-' * 50)
+
