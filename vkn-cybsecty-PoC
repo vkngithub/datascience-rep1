@@ -220,10 +220,10 @@ datasets = [make_moons(noise=0.3, random_state=0)
             ,make_blobs()
            ]
 
-names = ["Decision Tree"]
+names = ["Decision Tree","K-Neighbors"]
 # Creating a Python List with our three Tree classifiers
 treeclassifiers = [
-    DecisionTreeClassifier(max_depth=5)]
+    DecisionTreeClassifier(max_depth=5),KNeighborsClassifier(n_neighbors=7)]
     
 figure = plt.figure(figsize=(12, 10))
 h = 0.02
