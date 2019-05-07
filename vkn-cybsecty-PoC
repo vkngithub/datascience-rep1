@@ -1,0 +1,290 @@
+# This Python 3 environment comes with many helpful analytics libraries installed
+# It is defined by the kaggle/python docker image: https://github.com/kaggle/docker-python
+# vinod kumar n, May 7 2019, code references - kaggle, towards data science, etc
+
+import numpy as np # linear algebra
+import pandas as pd # data processing, CSV file I/O (e.g. pd.read_csv)
+import matplotlib.pyplot as plt
+import seaborn as sns
+import math, time, random, datetime
+from matplotlib.colors import ListedColormap
+
+# Import statements required for Plotly 
+import plotly.offline as py
+py.init_notebook_mode(connected=True)
+import plotly.graph_objs as go
+from plotly import tools
+
+#ignore warnings
+import warnings
+warnings.filterwarnings('ignore')
+
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LogisticRegression
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.naive_bayes import GaussianNB
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn import model_selection, tree, preprocessing, metrics, linear_model
+from mlxtend.plotting import plot_decision_regions
+from sklearn.datasets import make_moons, make_circles, make_classification, make_blobs, make_checkerboard
+from sklearn.preprocessing import StandardScaler
+
+# Input data files are available in the "../input/" directory.
+# For example, running this (by clicking run or pressing Shift+Enter) will list the files in the input directory
+
+import os
+print(os.listdir("../input"))
+
+# Any results you write to the current directory are saved as output.
+data = pd.read_csv('../input/Cyber Security Breaches.csv')
+
+#Create a new dataframe called data that includes all rows where the value of a cell in 
+#the Name_of_Covered_Entity column does not equal “Memorial Healthcare System”
+#data[data.Name_of_Covered_Entity != 'Memorial Healthcare System']
+#data[data.Number != 494]
+#data[data.Number != 567]
+
+# dropping null value columns to avoid errors 
+#data.dropna(inplace = True) 
+
+#data.describe()
+#data.head()
+#data.tail()
+#data.corr()
+
+# Create a list of unique values by turning the pandas column into a set
+list(set(data.Type_of_Breach))
+# Create a list of unique values in df.trucks
+list(data['Type_of_Breach'].unique())
+
+# start stop and step variables 
+start, stop, step = 0, 1, 1
+
+# slicing till the 1st element 
+data["breachtype"]= data["Type_of_Breach"].str.slice(start, stop, step) #get T from Theft, L from Loss, etc...
+
+#------------ data preprocessing -----------
+#scikit-learn requires data to be numerical, so we can either map to corresponding numeric values or drop columns that are non-numeric
+data = data.drop(['Name_of_Covered_Entity'], axis=1)
+#data = data.drop(['State'], axis=1)
+data = data.drop(['Business_Associate_Involved'], axis=1)
+data = data.drop(['Type_of_Breach'], axis=1)
+data = data.drop(['Location_of_Breached_Information'], axis=1)
+data = data.drop(['Summary'], axis=1)
+data = data.drop(['Date_of_Breach'], axis=1)
+data = data.drop(['Date_Posted_or_Updated'], axis=1)
+data = data.drop(['breach_start'], axis=1)
+data = data.drop(['breach_end'], axis=1)
+
+# Create a list of unique values by turning the pandas column into a set
+list(set(data.breachtype))
+# Create a list of unique values in df.trucks
+list(data['breachtype'].unique()) # returns ['T', 'L', 'O', 'H', 'U', 'I'] #this is a multiclass classification problem
+list(set(data.State))
+print('state before mapping:', list(data['State'].unique()))
+
+#map state col values to numeric values
+d = {'TX':0, 'MO':1, 'AK':2, 'DC':3, 'CA':4, 'PA':5, 'TN':6, 'NY':7, 'NC':8, 'MI':9, 'MA':10, 'IL':11, 'UT':12, 'NV':13, 
+      'AZ':14, 'RI':15, 'PR':16, 'FL':17, 'NM':18, 'CO':19, 'WY':20, 'WI':21, 'WA':22, 'CT':23, 'AL':24, 'NE':25, 'SC':26, 
+      'KY':27, 'MN':28, 'VA':29, 'OH':30, 'KS':31, 'GA':32, 'MD':33, 'IN':34, 'ID':35, 'OR':36, 'NJ':37, 'DE':38, 'IA':39, 
+      'OK':40, 'AR':41, 'MS':42, 'LA':43, 'NH':44, 'MT':45, 'WV':46, 'ND':47, 'HI':48, 'SD':49, 'ME':50, 'VT':51}
+data['State'] = data['State'].map(d)
+list(set(data.State))
+print('state after mapping:', list(data['State'].unique()))
+
+# Add a new column named 'breachtype_int' 
+data['breachtype_int'] = [0 if x =='T' else 1 if x =='L' else 2 if x =='O' else 3 if x =='H' else 4 if x =='U' else 5 for x in data['breachtype']] 
+
+X = data.values[:,0:5]
+y = data.values[:,6].astype(np.int)
+print('class labels: ', np.unique(y))
+print("data X:", X)
+print("data y:", y)
+print("data X:", X.shape, "data y:", y.shape)
+
+data_train, data_test = train_test_split(data, test_size=0.3, random_state=1)
+#data_train.head(10)
+#data_test.head(10)
+
+#currently not in use
+def replaceValues1(df, cv1, cv2, cv3):
+    common_value1 = cv1
+    common_value2 = cv2
+    common_value3 = cv3
+    data = [df]
+    for dataset in data:
+        dataset['Summary'] = dataset['Summary'].fillna((common_value1))
+        dataset['breach_end'] = dataset['breach_end'].fillna((common_value2))
+        dataset['Business_Associate_Involved'] = dataset['Business_Associate_Involved'].fillna((common_value3))
+        
+#replace Summary col in both train and test
+#replaceValues1(data_train,'no summary','2014-01-27','no busn assoc')
+#replaceValues1(data_test,'no summary','2014-01-27','no busn assoc')
+
+#data_train.shape #706 rows, 16 cols
+#data_test.shape #349 rows, 16 cols
+
+#train models
+# Split the dataframe into data and labels
+y_train = data_train.breachtype_int # labels
+X_train = data_train.drop("breachtype_int", axis=1) # data
+X_train = data_train.drop("breachtype", axis=1) # data
+print(X_train.shape)
+print(y_train.shape)
+
+#---------------------------------------------------------------------
+
+# Function that runs the requested algorithm and returns the cv accuracy metrics
+def fitmodel(modeltypeobj, X_train, y_train, cv):
+    
+    print('-' * 50)
+    start_time = time.time() #begin
+    
+    # One Pass
+    model = modeltypeobj.fit(X_train, y_train)
+    acc = round(model.score(X_train, y_train) * 100, 2)
+    
+    # Cross Validation 
+    # CV is a more robust metric because it is going through the train data several times(10 times a.k.a 10-fold)
+    # and predict and repeat with diff versions of the same train data
+    train_pred = model_selection.cross_val_predict(modeltypeobj, X_train, y_train, cv=cv, n_jobs = -1)
+    
+    # Cross-validation accuracy metric
+    acc_cv = round(metrics.accuracy_score(y_train, train_pred) * 100, 2)
+    
+    end_time = (time.time() - start_time) #end
+    
+    return train_pred, acc, acc_cv, start_time, end_time
+
+# logistic regression
+lrmodel = LogisticRegression()
+train_pred, acc, acc_cv, start_time, end_time = fitmodel(lrmodel, X_train, y_train, 10)
+print("Logistic Regression")
+print("Accuracy: %s" % acc)
+print("Accuracy CV 10-Fold: %s" % acc_cv)
+print("Running Time: %s" % datetime.timedelta(seconds=end_time))
+print('-' * 50)
+
+# k-Nearest Neighbours
+knnmodel = KNeighborsClassifier(n_neighbors=7)
+train_pred, acc, acc_cv, start_time, end_time = fitmodel(knnmodel, X_train, y_train, 10)
+print("k-Nearest Neighbours")
+print("Accuracy: %s" % acc)
+print("Accuracy CV 10-Fold: %s" % acc_cv)
+print("Running Time: %s" % datetime.timedelta(seconds=end_time))
+print('-' * 50)
+
+# Gaussian Naive Bayes
+gnbmodel = GaussianNB()
+train_pred, acc, acc_cv, start_time, end_time = fitmodel(gnbmodel, X_train, y_train, 10)
+print("Gaussian Naive Bayes")
+print("Accuracy: %s" % acc)
+print("Accuracy CV 10-Fold: %s" % acc_cv)
+print("Running Time: %s" % datetime.timedelta(seconds=end_time))
+print('-' * 50)
+
+# Decision Tree Classifier
+dtcmodel = DecisionTreeClassifier(max_depth=4)
+train_pred, acc, acc_cv, start_time, end_time = fitmodel(dtcmodel, X_train, y_train, 10)
+print("Decision Tree Classifier")
+print("Accuracy: %s" % acc)
+print("Accuracy CV 10-Fold: %s" % acc_cv)
+print("Running Time: %s" % datetime.timedelta(seconds=end_time))
+print('-' * 50)
+
+#--------------------------------------
+#clf=dtcmodel
+#error: Filler values must be provided when X has more than 2 training features.
+#workaround: 
+
+#So, say, you have 4 features and they come unnamed:
+#X_train_std.shape[1] = 4
+#We can refer to each feature by their index 0, 1, 2, 3. You only can plot 2 features at a time, say you want 0 and 2.
+#You'll need to specify one additional parameter (to those specified in @sos.cott's answer), feature_index, and fill the rest with fillers:
+
+#value=1.5
+#width=0.75
+# Plotting decision regions
+#plot_decision_regions(X, y, clf=dtcmodel, legend=2,
+#              feature_index=[0,1],                        #these one will be plotted  
+#              filler_feature_values={2:value, 3:value}, filler_feature_ranges={2:width, 3:width}) #these will be ignored
+
+# Adding axes annotations
+#plt.xlabel('x label')
+#plt.ylabel('breach type')
+#plt.title('DT on cyberscty')
+#plt.show()
+
+datasets = [make_moons(noise=0.3, random_state=0)
+            ,make_circles(noise=0.2, factor=0.5, random_state=1)
+            ,make_blobs()
+           ]
+
+names = ["Decision Tree"]
+# Creating a Python List with our three Tree classifiers
+treeclassifiers = [
+    DecisionTreeClassifier(max_depth=5)]
+    
+figure = plt.figure(figsize=(12, 10))
+h = 0.02
+i = 1
+# iterate over datasets
+for ds in datasets:
+    # preprocess dataset, split into training and test part
+    X, y = ds
+    X = StandardScaler().fit_transform(X)
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=.4)
+
+    x_min, x_max = X[:, 0].min() - .5, X[:, 0].max() + .5
+    y_min, y_max = X[:, 1].min() - .5, X[:, 1].max() + .5
+    xx, yy = np.meshgrid(np.arange(x_min, x_max, h),
+                         np.arange(y_min, y_max, h))
+
+    # just plot the dataset first
+    cm = plt.cm.jet
+    cm_bright = ListedColormap(['#FF0000', '#0000FF'])
+    ax = plt.subplot(len(datasets), len(treeclassifiers) + 1, i)
+    # Plot the training points
+    ax.scatter(X_train[:, 0], X_train[:, 1], c=y_train, cmap=cm_bright, alpha=0.7)
+    # and testing points
+    #ax.scatter(X_test[:, 0], X_test[:, 1], c=y_test, cmap=cm_bright, alpha=0.6)
+    ax.set_xlim(xx.min(), xx.max())
+    ax.set_ylim(yy.min(), yy.max())
+    ax.set_xticks(())
+    ax.set_yticks(())
+    i += 1
+
+    # iterate over classifiers
+    for name, clf in zip(names, treeclassifiers):
+        ax = plt.subplot(len(datasets), len(treeclassifiers) + 1, i)
+        clf.fit(X_train, y_train)
+        score = clf.score(X_test, y_test)
+
+        # Plot the decision boundary. For that, we will assign a color to each
+        # point in the mesh [x_min, m_max]x[y_min, y_max].
+        if hasattr(clf, "decision_function"):
+            Z = clf.decision_function(np.c_[xx.ravel(), yy.ravel()])
+        else:
+            Z = clf.predict_proba(np.c_[xx.ravel(), yy.ravel()])[:, 1]
+
+        # Put the result into a color plot
+        Z = Z.reshape(xx.shape)
+        ax.contourf(xx, yy, Z, cmap=plt.cm.jet, alpha=.8)
+
+        # Plot also the training points
+        ax.scatter(X_train[:, 0], X_train[:, 1], c=y_train, cmap=cm_bright, alpha=0.6, linewidths=0.6, edgecolors="white")
+        # and testing points
+        #ax.scatter(X_test[:, 0], X_test[:, 1], c=y_test, cmap=cm_bright,
+                   #alpha=0.6)
+
+        ax.set_xlim(xx.min(), xx.max())
+        ax.set_ylim(yy.min(), yy.max())
+        ax.set_xticks(())
+        ax.set_yticks(())
+        ax.set_title(name)
+        ax.text(xx.max() - .3, yy.min() + .3, ('%.2f' % score).lstrip('0'),
+                size=15, horizontalalignment='right')
+        i += 1
+
+figure.subplots_adjust(left=.02, right=.98)
+plt.show()
